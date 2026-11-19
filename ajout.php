@@ -1,26 +1,10 @@
 <?php
-$cnx=mysqli_connect("localhost","root","","bdsellami");
-$c=$_POST["categorie"];
-$d=$_POST["description"];
-$taille="";
-if(isset($_POST["r1"]))
-{$taille="S";}
-if(isset($_POST["r2"]))
-{$taille="m";}
-if(isset($_POST["r3"]))
-{$taille="l";}
-if(isset($_POST["r4"]))
-{$taille="xl";}
-$p=$_POST["p"];
-$dis="N";
-$req1="select * from habit h,location l where l.codeHab=h.codehab";
-$res1=mysqli_query($cnx,$req1);
-if(mysqli_num_rows($res1)>0)
-{
-	$dis="O";
+declare(strict_types=1); require __DIR__.'/config.php';
+$error='';$success=false;
+if($_SERVER['REQUEST_METHOD']==='POST'){
+ verify_csrf();$description=trim((string)($_POST['description']??''));$size=strtoupper(trim((string)($_POST['taille']??'')));$price=filter_var($_POST['prix']??null,FILTER_VALIDATE_INT);$category=filter_var($_POST['categorie']??null,FILTER_VALIDATE_INT);
+ if(mb_strlen($description)<5||mb_strlen($description)>100||!in_array($size,['S','M','L','X'],true)||$price===false||$price<1||$price>100000||!in_array($category,[1,2,3,4,5],true))$error='Vérifiez la description, la taille, le prix et la catégorie.';
+ else{$stmt=$db->prepare('INSERT INTO habit (description,taille,prix,disponible,codeCat) VALUES (?,?,?,\'D\',?)');$stmt->bind_param('ssii',$description,$size,$price,$category);$stmt->execute();$success=true;}
 }
-$req2="insert into habit value('','$d','$taille','$p','$dis',$c)";
-$res2=mysqli_query($cnx,$req2);
-if(mysql_affected_rows($cnx)>0)
-{echo("enregistrement avec succes");}
-mysqli_close($cnx);
+$cats=$db->query('SELECT codeCat,libelle FROM categorie ORDER BY libelle');
+?><!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Ajouter une tenue — Fedi Élégance</title><link rel="stylesheet" href="fedi.css"></head><body><header><a class="brand" href="index.php"><span>F</span> Fedi Élégance</a><nav><a href="index.php">Accueil</a><a href="catalogue.php">Catalogue</a><a href="location.php">Location</a></nav></header><main class="content"><p class="eyebrow">Nouvelle pièce</p><h1>Ajouter un habit</h1><?php if($error):?><p class="alert"><?=h($error)?></p><?php endif;?><?php if($success):?><p class="success">La tenue a été ajoutée au catalogue.</p><?php endif;?><form method="post"><input type="hidden" name="csrf" value="<?=h(csrf())?>"><label for="categorie">Catégorie</label><select id="categorie" name="categorie" required><option value="">Choisir</option><?php while($c=$cats->fetch_assoc()):?><option value="<?=(int)$c['codeCat']?>"><?=h($c['libelle'])?></option><?php endwhile;?></select><label for="description">Description</label><input id="description" name="description" maxlength="100" minlength="5" required><label for="taille">Taille</label><select id="taille" name="taille" required><option value="">Choisir</option><option>S</option><option>M</option><option>L</option><option>X</option></select><label for="prix">Prix de location (TND)</label><input id="prix" name="prix" type="number" min="1" max="100000" required><button class="button">Ajouter au catalogue</button></form></main><footer>Fedi Élégance</footer></body></html>
